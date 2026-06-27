@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>答案之书 · The Book of Answers</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* 2026 Pantone-inspired palette */
+    --bg: #121820;
+    --bg-light: #1a2432;
+    --card: #f7f5f2;
+    --card-shadow: rgba(13,115,119,0.15);
+    --primary: #0d7377;
+    --primary-dark: #095c60;
+    --primary-light: #2a9d9f;
+    --warm: #e8a87c;
+    --warm-soft: #f4c9a8;
+    --text: #2c3e50;
+    --text-dim: #7f8c8d;
+    --text-light: #bdc3c7;
+    --divider: #e8e4df;
+    --glow-teal: rgba(13,115,119,0.3);
+    --glow-warm: rgba(232,168,124,0.25);
+  }
+
+  body {
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Stars */
+  #stars-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* Particles */
+  .particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Main */
+  .app {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    align-items: center;
+    width: 100%; max-width: 600px;
+    padding: 20px;
+    min-height: 100vh;
+    justify-content: center;
+    gap: 40px;
+  }
+
+  /* Header */
+  .header { text-align: center; }
+  .title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+  }
+  .title .accent { color: var(--primary-light); }
+  .subtitle {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+  }
+
+  /* Card Scene */
+  .card-scene {
+    perspective: 1200px;
+    width: 320px;
+    height: 440px;
+    position: relative;
+  }
+
+  .card-inner {
+    position: relative;
+    width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    will-change: transform;
+  }
+
+  /* Card faces */
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 28px;
+  }
+  .card-front {
+    background: var(--card);
+    box-shadow: 0 8px 40px var(--card-shadow), 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 1;
+  }
+  .card-back {
+    background: var(--card);
+    transform: rotateY(180deg);
+    box-shadow: 0 8px 40px var(--card-shadow), 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Front design */
+  .card-front::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1.5px solid var(--primary);
+    border-radius: 12px;
+    opacity: 0.25;
+  }
+  .card-icon {
+    font-size: 3.2rem;
+    margin-bottom: 24px;
+    opacity: 0.85;
+  }
+  .card-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+  .card-subtitle {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .card-divider {
+    width: 40px; height: 2px;
+    background: var(--primary);
+    opacity: 0.35;
+    margin-bottom: 28px;
+    border-radius: 1px;
+  }
+  .card-hint {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.8;
+  }
+  .card-hint .icon-press {
+    display: inline-block;
+    animation: pulse-ring 2s ease-in-out infinite;
+    width: 36px; height: 36px;
+    line-height: 36px;
+    border-radius: 50%;
+    background: var(--warm-soft);
+    color: var(--primary);
+    font-size: 0.85rem;
+    margin: 0 4px;
+  }
+  @keyframes pulse-ring {
+    0%,100% { box-shadow: 0 0 0 0 rgba(232,168,124,0.5); }
+    50% { box-shadow: 0 0 0 14px rgba(232,168,124,0); }
+  }
+
+  /* Back design */
+  .card-back::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1.5px solid var(--warm);
+    border-radius: 12px;
+    opacity: 0.25;
+  }
+
+  /* Thinking state on back */
+  .thinking-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    transition: opacity 0.3s;
+  }
+  .thinking-indicator.hidden { opacity: 0; pointer-events: none; }
+  .thinking-dots {
+    display: flex; gap: 8px;
+  }
+  .thinking-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    opacity: 0.3;
+  }
+  .thinking-dots span:nth-child(1) { animation: dot-pulse 1.2s ease-in-out 0s infinite; }
+  .thinking-dots span:nth-child(2) { animation: dot-pulse 1.2s ease-in-out 0.3s infinite; }
+  .thinking-dots span:nth-child(3) { animation: dot-pulse 1.2s ease-in-out 0.6s infinite; }
+  @keyframes dot-pulse {
+    0%,100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+  .thinking-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Answer reveal */
+  .answer-reveal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 28px;
+    opacity: 0;
+    transition: opacity 0.8s ease-out;
+    pointer-events: none;
+  }
+  .answer-reveal.visible { opacity: 1; pointer-events: auto; }
+  .answer-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .answer-text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: center;
+    line-height: 1.7;
+    max-width: 250px;
+    word-break: break-word;
+    animation: answer-appear 0.6s ease-out;
+  }
+  @keyframes answer-appear {
+    0% { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .answer-divider {
+    width: 40px; height: 2px;
+    background: var(--warm);
+    opacity: 0.4;
+    margin: 24px 0;
+    border-radius: 1px;
+  }
+  .reset-hint {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 8px;
+    opacity: 0.55;
+  }
+
+  /* Press feedback */
+  .card-inner.pressing .card-front {
+    box-shadow: 0 8px 40px var(--card-shadow), 0 2px 8px rgba(0,0,0,0.3),
+                0 0 40px var(--glow-teal), 0 0 80px var(--glow-warm);
+  }
+  .card-inner.flipped .card-back {
+    box-shadow: 0 8px 40px var(--card-shadow), 0 2px 8px rgba(0,0,0,0.3),
+                0 0 30px var(--glow-warm), 0 0 50px var(--glow-teal);
+  }
+
+  /* Glow aura */
+  .card-aura {
+    position: absolute;
+    inset: -50px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--glow-teal) 0%, transparent 70%);
+    filter: blur(25px);
+    opacity: 0;
+    transition: opacity 0.6s;
+    pointer-events: none;
+  }
+  .card-aura.active { opacity: 0.5; }
+
+  /* Lang toggle */
+  .lang-toggle {
+    background: var(--bg-light);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-dim);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+  }
+  .lang-toggle:hover {
+    border-color: var(--primary);
+    color: var(--text-light);
+  }
+
+  .lang-toggle:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(13,115,119,0.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    .app { padding: 16px; gap: 28px; }
+    .card-scene { width: 260px; height: 360px; }
+    .card-front, .card-back { padding: 28px 20px; }
+    .card-title { font-size: 1.3rem; }
+    .card-icon { font-size: 2.6rem; margin-bottom: 16px; }
+    .card-hint { font-size: 0.8rem; }
+    .answer-text { font-size: 1.15rem; }
+    .title { font-size: 1.4rem; }
+  }
+  @media (max-width: 360px) {
+    .card-scene { width: 240px; height: 330px; }
+    .card-title { font-size: 1.2rem; }
+    .card-icon { font-size: 2.2rem; margin-bottom: 12px; }
+    .card-hint { font-size: 0.76rem; }
+    .answer-text { font-size: 1.05rem; }
+    .title { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <div class="header">
+    <div class="title" id="pageTitle">答<span class="accent">案</span>之书</div>
+    <div class="subtitle" id="pageSubtitle">The Book of Answers</div>
+  </div>
+
+  <!-- Card -->
+  <div class="card-scene" id="cardScene">
+    <div class="card-aura" id="cardAura"></div>
+    <div class="card-inner" id="cardInner">
+      <!-- Front -->
+      <div class="card-face card-front">
+        <div class="card-icon">🔮</div>
+        <div class="card-title" id="cardFrontTitle">答案之书</div>
+        <div class="card-subtitle" id="cardFrontSubtitle">Book of Answers</div>
+        <div class="card-divider"></div>
+        <div class="card-hint" id="cardHint">
+          <span class="icon-press">◉</span><br>长按卡牌获取答案
+        </div>
+      </div>
+
+      <!-- Back -->
+      <div class="card-face card-back">
+        <!-- Thinking state (visible during flip) -->
+        <div class="thinking-indicator" id="thinkingIndicator">
+          <div class="thinking-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="thinking-label" id="thinkingLabel">答案正在揭晓</div>
+        </div>
+        <!-- Answer (visible after flip completes) -->
+        <div class="answer-reveal" id="answerReveal">
+          <div class="answer-label" id="answerLabel">答案之书说</div>
+          <div class="answer-text" id="answerText"></div>
+          <div class="answer-divider"></div>
+          <div class="reset-hint" id="resetHint">长按卡牌再次提问</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <button class="lang-toggle" id="langBtn">🌐 English / 英文</button>
+</div>
+
+<script src="answers_data.js"></script>
+<script>
+let answersData = [];
+let lang = 'cn';
+let isFlipped = false;
+let isAnimating = false;
+let pressTimer = null;
+let flipStartTime = 0;
+let rafId = null;
+let lastFlipPlayed = -1;
+let currentRotation = 0;
+let currentHalfFlips = 7;
+let pendingAnswer = null; // stored as {cn, en} object for lang switching
+
+// Audio context (lazy init)
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+// ===== Stars =====
+function initStars() {
+  const c = document.getElementById('stars-canvas');
+  const ctx = c.getContext('2d');
+  function rsz() { c.width = innerWidth; c.height = innerHeight; }
+  rsz(); addEventListener('resize', rsz);
+
+  const stars = Array.from({length: 150}, () => ({
+    x: Math.random() * c.width, y: Math.random() * c.height,
+    r: Math.random()*1.2+0.3, a: Math.random(),
+    da: (Math.random()-0.5)*0.008, speed: Math.random()*0.2+0.05
+  }));
+
+  (function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#e8a87c';
+    if (Math.random()<0.002) {
+      const sx=Math.random()*c.width, sy=Math.random()*c.height*0.4, len=Math.random()*60+30;
+      const g=ctx.createLinearGradient(sx,sy,sx+len,sy-len*0.5);
+      g.addColorStop(0,'rgba(42,157,159,0.6)'); g.addColorStop(1,'rgba(42,157,159,0)');
+      ctx.strokeStyle=g; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+len,sy-len*0.5); ctx.stroke();
+    }
+    stars.forEach(s=>{
+      s.a+=s.da; if(s.a>1||s.a<0.15) s.da*=-1;
+      ctx.globalAlpha=s.a*0.6; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+      s.y-=s.speed; if(s.y<-10){s.y=c.height+10;s.x=Math.random()*c.width;}
+    });
+    ctx.globalAlpha=1; requestAnimationFrame(draw);
+  })();
+}
+
+// ===== Data =====
+function loadAnswers() {
+  if (typeof ANSWERS_DATA !== 'undefined' && ANSWERS_DATA.length > 0) {
+    answersData = ANSWERS_DATA;
+  } else {
+    answersData = [
+      {cn:"是的，这是正确的选择。",en:"Yes, this is the right choice."},
+      {cn:"现在还不是时候。",en:"Now is not the time."},
+    ];
+  }
+}
+
+function getAnswer() {
+  return answersData[Math.floor(Math.random() * answersData.length)];
+}
+
+// ===== Toast =====
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== Sound =====
+function playFlipSound() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.12;
+
+    // White noise → bandpass filter → envelope = card flip whoosh
+    const bufferSize = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / ctx.sampleRate;
+      const env = Math.exp(-t / (duration * 0.18));
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(600, now);
+    filter.frequency.exponentialRampToValueAtTime(200, now + duration);
+    filter.Q.value = 1.2;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(now);
+    src.stop(now + duration);
+
+    // Subtle click at the end (like a card landing)
+    const clickTime = now + duration * 0.7;
+    const clickGain = ctx.createGain();
+    clickGain.gain.setValueAtTime(0.15, clickTime);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, clickTime + 0.03);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, clickTime);
+    osc.frequency.exponentialRampToValueAtTime(400, clickTime + 0.04);
+    osc.connect(clickGain);
+    clickGain.connect(ctx.destination);
+    osc.start(clickTime);
+    osc.stop(clickTime + 0.04);
+
+  } catch(e) {
+    // Audio not available, silently skip
+  }
+}
+
+// ===== Card Flip Logic =====
+const cardInner = document.getElementById('cardInner');
+const cardScene = document.getElementById('cardScene');
+const cardAura = document.getElementById('cardAura');
+const answerText = document.getElementById('answerText');
+const answerReveal = document.getElementById('answerReveal');
+const thinkingIndicator = document.getElementById('thinkingIndicator');
+
+const LONG_PRESS_MS = 300;
+const TOTAL_HALF_FLIPS = 7; // odd → ends showing back face
+const TOTAL_DURATION = 2800; // ms — full flip animation ~2.8s
+
+function canFlip() {
+  return !isAnimating;
+}
+
+function startPress(e) {
+  if (!canFlip()) return;
+  e.preventDefault();
+
+  cardInner.classList.add('pressing');
+  cardAura.classList.add('active');
+
+  // Init audio context on first user interaction
+  try { getAudioCtx(); } catch(e) {}
+
+  pressTimer = setTimeout(() => {
+    beginFlip();
+  }, LONG_PRESS_MS);
+}
+
+function cancelPress(e) {
+  clearTimeout(pressTimer);
+  pressTimer = null;
+  if (!isAnimating) {
+    cardInner.classList.remove('pressing');
+    cardAura.classList.remove('active');
+  }
+}
+
+function beginFlip() {
+  if (!canFlip()) { cancelPress(); return; }
+  clearTimeout(pressTimer);
+  pressTimer = null;
+
+  isAnimating = true;
+  lastFlipPlayed = -1;
+
+  // Pick answer now but DON'T show it yet — reveal only during last half-flip
+  pendingAnswer = getAnswer(); // store full {cn, en} object
+
+  // Show thinking state on back, hide previous answer immediately
+  thinkingIndicator.classList.remove('hidden');
+  answerReveal.classList.remove('visible');
+  answerReveal.dataset.revealing = '0';
+
+  cardInner.classList.remove('pressing');
+  cardAura.classList.add('active');
+
+  document.getElementById('langBtn').disabled = true;
+
+  flipStartTime = performance.now();
+
+  // First flip: 7 半圈 (front → back). Re-flip: 8 半圈 (back → back, even).
+  currentHalfFlips = isFlipped ? 8 : 7;
+  animateFlips(currentHalfFlips);
+}
+
+function animateFlips(halfFlips) {
+  const elapsed = performance.now() - flipStartTime;
+  // Keep ~3s pace per 7 half-flips; scale duration proportionally
+  const duration = (halfFlips / 7) * TOTAL_DURATION;
+  const progress = Math.min(elapsed / duration, 1);
+
+  // Easing: slow start, accelerate, slow end
+  const eased = easeInOutCubic(progress);
+
+  // Total rotation added this flip sequence
+  const addedRotation = halfFlips * 180;
+  const rotation = currentRotation + eased * addedRotation;
+  cardInner.style.transform = `rotateY(${rotation}deg)`;
+
+  // Play sound at each half-flip boundary
+  const currentHalfFlip = Math.floor(rotation / 180);
+  if (currentHalfFlip > lastFlipPlayed) {
+    playFlipSound();
+    lastFlipPlayed = currentHalfFlip;
+  }
+
+  // Answer appears during the last half-flip
+  const lastFlipStart = (halfFlips - 1) / halfFlips;
+  if (progress >= lastFlipStart && answerReveal.dataset.revealing !== '1') {
+    answerReveal.dataset.revealing = '1';
+    answerText.textContent = lang === 'en' ? pendingAnswer.en : pendingAnswer.cn;
+    thinkingIndicator.classList.add('hidden');
+    answerReveal.classList.add('visible');
+    spawnParticles();
+  }
+
+  if (progress < 1) {
+    rafId = requestAnimationFrame(() => animateFlips(halfFlips));
+  } else {
+    onFlipComplete();
+  }
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function onFlipComplete() {
+  isFlipped = true;
+  isAnimating = false;
+  currentRotation += currentHalfFlips * 180;
+  // Snap to exact position
+  cardInner.style.transform = `rotateY(${currentRotation}deg)`;
+  cardInner.classList.add('flipped');
+  cardAura.classList.remove('active');
+
+  // Reset reveal flag for next flip
+  answerReveal.dataset.revealing = '0';
+
+  // One final "landing" sound
+  playFlipSound();
+
+  document.getElementById('langBtn').disabled = false;
+}
+
+function resetCard() {
+  if (isAnimating) return;
+  cancelPress();
+  isFlipped = false;
+  cardInner.classList.remove('flipped', 'pressing');
+  cardInner.style.transform = 'rotateY(0deg)';
+  cardAura.classList.remove('active');
+  thinkingIndicator.classList.remove('hidden');
+  answerReveal.classList.remove('visible');
+  answerReveal.dataset.revealing = '0';
+  answerText.textContent = '';
+  pendingAnswer = null;
+  lastFlipPlayed = -1;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  document.getElementById('langBtn').disabled = false;
+}
+
+// ===== Events =====
+cardScene.addEventListener('mousedown', startPress);
+cardScene.addEventListener('mouseup', cancelPress);
+cardScene.addEventListener('mouseleave', cancelPress);
+cardScene.addEventListener('touchstart', startPress, {passive: false});
+cardScene.addEventListener('touchend', cancelPress);
+cardScene.addEventListener('touchcancel', cancelPress);
+cardScene.addEventListener('touchmove', (e) => {
+  if (pressTimer) cancelPress(e);
+});
+
+// Prevent context menu on long press
+cardScene.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ===== Particles =====
+function spawnParticles() {
+  const colors = ['#0d7377','#2a9d9f','#e8a87c','#f4c9a8','#095c60','#42c6c9'];
+  for (let i = 0; i < 50; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random()*6+2;
+      const color = colors[Math.floor(Math.random()*colors.length)];
+      Object.assign(p.style, {
+        width: size+'px', height: size+'px',
+        backgroundColor: color,
+        left: (40+Math.random()*20)+'%',
+        top: (35+Math.random()*20)+'%',
+        boxShadow: `0 0 ${size*2}px ${color}`,
+        opacity: '1',
+        transition: `all ${Math.random()*2+1.5}s ease-out`
+      });
+      document.body.appendChild(p);
+      requestAnimationFrame(() => {
+        p.style.opacity = '0';
+        p.style.transform = `translate(${(Math.random()-0.5)*250}px, ${-Math.random()*200-50}px) scale(0.2)`;
+      });
+      setTimeout(() => p.remove(), 3000);
+    }, i * 18);
+  }
+}
+
+// ===== Lang =====
+function updateAllTexts() {
+  const isEn = lang === 'en';
+
+  // Browser tab title
+  document.title = isEn
+    ? 'The Book of Answers'
+    : '答案之书 · The Book of Answers';
+
+  // Header
+  document.getElementById('pageTitle').innerHTML = isEn
+    ? 'The Book of Answers'
+    : '答<span class="accent">案</span>之书';
+  document.getElementById('pageSubtitle').textContent = isEn
+    ? '答案之书'
+    : 'The Book of Answers';
+
+  // Card front
+  document.getElementById('cardFrontTitle').textContent = isEn
+    ? 'Book of Answers'
+    : '答案之书';
+  document.getElementById('cardFrontSubtitle').textContent = isEn
+    ? '答案之书'
+    : 'Book of Answers';
+  document.getElementById('cardHint').innerHTML = isEn
+    ? '<span class="icon-press">◉</span><br>Long-press the card'
+    : '<span class="icon-press">◉</span><br>长按卡牌获取答案';
+
+  // Card back — thinking
+  document.getElementById('thinkingLabel').textContent = isEn
+    ? 'The answer is coming…'
+    : '答案正在揭晓';
+
+  // Card back — answer
+  document.getElementById('answerLabel').textContent = isEn
+    ? 'The Book Says'
+    : '答案之书说';
+  document.getElementById('resetHint').textContent = isEn
+    ? 'Long-press to ask again'
+    : '长按卡牌再次提问';
+
+  // Update displayed answer if card is flipped and answer is visible
+  if (isFlipped && answerReveal.classList.contains('visible') && pendingAnswer) {
+    answerText.textContent = lang === 'en' ? pendingAnswer.en : pendingAnswer.cn;
+  }
+
+  // Lang button
+  document.getElementById('langBtn').textContent = isEn
+    ? '🌐 中文 / Chinese'
+    : '🌐 English / 英文';
+}
+
+document.getElementById('langBtn').addEventListener('click', () => {
+  lang = lang === 'cn' ? 'en' : 'cn';
+  updateAllTexts();
+});
+
+// ===== Init =====
+initStars();
+loadAnswers();
+</script>
+</body>
+</html>
